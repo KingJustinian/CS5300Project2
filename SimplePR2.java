@@ -7,7 +7,7 @@ import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapred.*;
 import org.apache.hadoop.util.*;
 
-public class SimplePR {
+public class SimplePR2 {
 	
 	static enum MyCounters { TOTAL_EDGES }
 	
@@ -26,13 +26,12 @@ public class SimplePR {
 public static class Map extends MapReduceBase implements Mapper<LongWritable, Text, Text, Text> {
 		
 	private Text nodeHead = new Text();
-	private Text nodeTail = new Text();
 
 	public void map(LongWritable key, Text value, OutputCollector<Text, Text> output, Reporter reporter) throws IOException {
 		String line = value.toString();
 		StringTokenizer tokenizer = new StringTokenizer(line);
 		
-		// Split the line into a string array with the source node, destination node, and random floating point number
+		// tempLine will contain 1) Node 2) Old pagerank value for that node 3) List nodes it links to (outlinks)
 		String[] tempLine = new String[3];
 		int i = 0;
 		while (tokenizer.hasMoreTokens()) {
@@ -40,13 +39,19 @@ public static class Map extends MapReduceBase implements Mapper<LongWritable, Te
 			i++;
 		}
 		
-		if (selectInputLine(Double.parseDouble(tempLine[2]))) {
-			reporter.incrCounter(MyCounters.TOTAL_EDGES, 1);
-			nodeHead.set(tempLine[0]);
-			nodeTail.set(tempLine[1]);
-			output.collect(nodeHead, new Text("|" + nodeTail.toString()));
-			//output.collect(nodeTail, new Text(nodeHead.toString() + "\t" + INITIAL_PR));
-		}
+		nodeHead.set(tempLine[0]);		
+		double oldPR = Double.parseDouble(tempLine[1]);
+		String linkString = tempLine[2];
+		String[] outLinks = linkString.split("\\|");
+		double degree = outLinks.length;
+		
+		double prDivDegree = oldPR / degree;
+		/*System.out.println("Head: " + nodeHead.toString());
+		System.out.println("Degree: " + degree);
+		System.out.println("prDivDegree: " + prDivDegree);*/
+		output.collect(nodeHead, new Text("|" + linkString));
+		//output.collect(nodeTail, new Text(nodeHead.toString() + "\t" + INITIAL_PR));
+		
 	}
 }
 
@@ -79,8 +84,8 @@ public static class Reduce extends MapReduceBase implements Reducer<Text, Text, 
 }
 
 public static void main(String[] args) throws Exception {
-	JobConf conf = new JobConf(SimplePR.class);
-	conf.setJobName("Simple PageRank");
+	JobConf conf = new JobConf(SimplePR2.class);
+	conf.setJobName("Simple PageRank2");
 
 	conf.setOutputKeyClass(Text.class);
 	conf.setOutputValueClass(Text.class);
